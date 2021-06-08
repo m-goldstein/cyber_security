@@ -1,0 +1,1 @@
+token=1ec428e8b0e81c1ded5dda5ac8ea0d38&user=admin&command1=ListFiles&command2=NoOp%80%00%00%00%00%98%01%00%00%00%00%00%00&command3=DeleteAllFiles

